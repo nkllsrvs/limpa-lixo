@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Limpa Lixo",
+  "version": "1.0.3",
+  "description": "Veja quais contas que você segue também estão na lista de outro perfil e deixe de seguir quem quiser. Tudo acontece no seu navegador.",
+  "permissions": ["cookies", "storage", "scripting", "tabs"],
+  "host_permissions": [
+    "https://www.instagram.com/*",
+    "https://i.instagram.com/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Abrir Limpa Lixo" },
+  "icons": { "128": "icon.png" }
+}

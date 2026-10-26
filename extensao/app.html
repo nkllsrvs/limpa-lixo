@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Limpa Lixo</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<a class="skip" href="#main">Pular para o conteúdo</a>
+
+<header class="top"><div>
+  <span class="brand">Limpa Lixo</span>
+  <span class="me" id="meBox"></span>
+</div></header>
+
+<main id="main" tabindex="-1">
+  <!-- não conectado -->
+  <section id="offView" class="hidden">
+    <h1>Conecte-se ao Instagram</h1>
+    <div class="card">
+      <p>Esta extensão usa a conta que você já abriu no Instagram neste navegador. Nada de senha, e tudo acontece aqui no seu computador.</p>
+      <ol>
+        <li>Abra o <a href="https://www.instagram.com/" target="_blank" rel="noopener">instagram.com</a> e entre com sua conta.</li>
+        <li>Volte aqui e clique em “Verificar de novo”.</li>
+      </ol>
+      <div class="actions"><button type="button" id="recheck">Verificar de novo</button></div>
+      <p class="error" id="offErr" role="alert"></p>
+    </div>
+  </section>
+
+  <!-- conectado -->
+  <section id="onView" class="hidden">
+    <div class="notice" role="note">
+      <strong>Importante:</strong> esta ferramenta não é do Instagram. Deixar de seguir muitas contas rápido pode fazer o Instagram limitar sua conta. Por isso, fazemos devagar, com pausa entre cada uma, e com um limite por dia. Deixar de seguir não dá para desfazer por aqui.
+    </div>
+
+    <div class="card">
+      <h1>Comparar com outro perfil</h1>
+      <form id="cmpForm" novalidate>
+        <label class="field" for="target">@ do perfil
+          <span class="hint">Pode colar o link do perfil. Perfis privados só funcionam se você segue.</span>
+        </label>
+        <input type="text" id="target" autocapitalize="none" spellcheck="false" placeholder="ex.: fulano" required aria-describedby="cmpErr">
+        <fieldset class="mode">
+          <legend>O que você quer ver?</legend>
+          <label><input type="radio" name="mode" value="followers" checked>
+            <span>Contas que eu sigo e que <strong>seguem esse perfil</strong></span></label>
+          <label><input type="radio" name="mode" value="following">
+            <span>Contas que eu sigo e que <strong>esse perfil também segue</strong></span></label>
+        </fieldset>
+        <div class="actions">
+          <button type="submit" id="cmpBtn">Comparar</button>
+          <button type="button" id="cmpStop" class="secondary hidden">Parar busca</button>
+        </div>
+        <div class="error" id="cmpErr" role="alert"></div>
+        <p class="info" id="cmpMsg" role="status"></p>
+      </form>
+    </div>
+
+    <div class="card hidden" id="resCard" aria-labelledby="resTitle">
+      <h2 id="resTitle" tabindex="-1"></h2>
+      <p class="info" id="resSub"></p>
+      <label class="field" for="filter">Filtrar a lista</label>
+      <input type="search" id="filter" placeholder="nome ou @" aria-controls="list">
+      <div class="toolbar">
+        <label class="check" for="all"><input type="checkbox" id="all"><span>Selecionar todos os exibidos</span></label>
+        <span id="countMsg" class="info" aria-live="polite"></span>
+      </div>
+      <ul class="people" id="list" aria-labelledby="resTitle"></ul>
+      <p class="info hidden" id="emptyMsg">Nenhuma conta em comum.</p>
+    </div>
+  </section>
+</main>
+
+<div class="bar hidden" id="bar" role="region" aria-label="Ação">
+  <div>
+    <div class="grow">
+      <div id="barMsg"></div>
+      <progress id="prog" class="hidden" value="0" max="1" aria-label="Progresso"></progress>
+    </div>
+    <button type="button" class="danger" id="unfBtn" disabled>Deixar de seguir</button>
+    <button type="button" class="secondary hidden" id="stopBtn">Parar</button>
+  </div>
+</div>
+<p class="sr-only" id="announce" aria-live="assertive"></p>
+
+<dialog id="confirmDlg" aria-labelledby="dlgTitle" aria-describedby="dlgBody">
+  <h2 id="dlgTitle">Confirmar</h2>
+  <div id="dlgBody"></div>
+  <div class="actions">
+    <button type="button" class="danger" id="dlgOk">Confirmar</button>
+    <button type="button" class="secondary" id="dlgCancel" autofocus>Cancelar</button>
+  </div>
+</dialog>
+
+<footer>
+  <p>Projeto independente, sem ligação com o Instagram ou a Meta. Use por sua conta e risco, só com a sua própria conta.</p>
+</footer>
+
+<script src="ig.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
