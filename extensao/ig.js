@@ -217,6 +217,24 @@ async function fullList(userId, kind, onProgress, shouldStop) {
   return out;
 }
 
+// Contas que eu sigo e que seguem `userId` — o próprio Instagram calcula ("Seguido por ...").
+// Bem mais leve que baixar a lista inteira de seguidores de um perfil grande.
+async function mutualFollowers(userId, onProgress, shouldStop) {
+  const out = {};
+  let maxId = "";
+  for (let guard = 0; guard < 500; guard++) {
+    if (shouldStop && shouldStop()) break;
+    const j = await igFetch(`/api/v1/friendships/${userId}/mutual_followers/` +
+      (maxId ? `?max_id=${encodeURIComponent(maxId)}` : ""));
+    for (const u of (j && j.users) || []) out[String(u.pk)] = u;
+    if (onProgress) onProgress(Object.keys(out).length);
+    if (!j || !j.next_max_id) break;
+    maxId = j.next_max_id;
+    await sleep(700 + Math.random() * 1100);
+  }
+  return out;
+}
+
 async function unfollow(userId) {
   const j = await igFetch(`/api/v1/friendships/destroy/${userId}/`, "POST");
   if (j && j.status === "ok") return true;

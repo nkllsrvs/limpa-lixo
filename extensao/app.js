@@ -126,6 +126,30 @@ $("cmpForm").addEventListener("submit", async (e) => {
     if (prof.is_private && prof.id !== state.me.id && !prof.followed_by_viewer) {
       throw { kind: "private" };
     }
+
+    // "seguem esse perfil": o Instagram já calcula quem você segue e segue o perfil
+    // ("Seguido por ..."). Serve para perfis de qualquer tamanho, com poucas requisições.
+    if (mode === "followers") {
+      let mutual = null;
+      try {
+        $("cmpMsg").textContent = `Buscando quem você segue e segue @${target}…`;
+        mutual = await mutualFollowers(prof.id,
+          (n) => ($("cmpMsg").textContent = `Buscando quem você segue e segue @${target}… ${fmt(n)}`),
+          () => state.stopCompare);
+      } catch (err) {
+        // limite, sessão etc. valem para o resto também; outros erros caem na comparação completa
+        if (["rate", "auth", "checkpoint", "private", "network", "notab"].includes(err.kind)) throw err;
+      }
+      if (mutual) {
+        if (state.stopCompare) { $("cmpMsg").textContent = "Busca interrompida."; return; }
+        const common = Object.values(mutual).filter((u) => String(u.pk) !== prof.id).map(shortUser);
+        common.sort((a, b) => a.username.localeCompare(b.username));
+        render({ target: prof, mode, users: common });
+        $("cmpMsg").textContent = "";
+        return;
+      }
+    }
+
     const total = mode === "followers" ? prof.followers : prof.following;
     if (total > MAX_TARGET) throw { kind: "msg", msg: `Esse perfil tem ${fmt(total)} contas nessa lista; o limite é ${fmt(MAX_TARGET)}. Tente a outra opção ou um perfil menor.` };
     if (total > WARN_TARGET) {
@@ -170,7 +194,9 @@ function render(res) {
   $("resTitle").textContent = res.users.length
     ? `${plural(res.users.length, "conta em comum", "contas em comum")} com ${t}`
     : `Nenhuma conta em comum com ${t}`;
-  $("resSub").textContent = `Você segue ${fmt(res.myFollowing)}. ${t} tem ${fmt(res.theirCount)} ${res.mode === "followers" ? "seguidores" : "contas seguidas"} carregadas.`;
+  $("resSub").textContent = res.myFollowing == null
+    ? `Contas que você segue e que seguem ${t}, segundo o próprio Instagram.`
+    : `Você segue ${fmt(res.myFollowing)}. ${t} tem ${fmt(res.theirCount)} ${res.mode === "followers" ? "seguidores" : "contas seguidas"} carregadas.`;
   $("emptyMsg").classList.toggle("hidden", res.users.length > 0);
   $("filter").value = "";
   const list = $("list");
