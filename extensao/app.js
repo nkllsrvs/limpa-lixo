@@ -327,5 +327,8 @@ window.addEventListener("beforeunload", (e) => {
   if (state.running) { e.preventDefault(); e.returnValue = ""; }
 });
 
+// usado pela recarga automática de desenvolvimento para não interromper nada em andamento
+window.devBusy = () => state.running || $("cmpBtn").disabled;
+
 // ---------- início ----------
 checkConnection();

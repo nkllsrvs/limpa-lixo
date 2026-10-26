@@ -67,9 +67,12 @@ function waitTabComplete(tabId) {
 let igTab = null;
 
 async function igTabId() {
-  // reaproveita uma aba aberta do instagram.com; senão abre uma em segundo plano
-  const tabs = await chrome.tabs.query({ url: ["https://www.instagram.com/*", "https://*.instagram.com/*"] });
-  if (tabs.length) return tabs[0].id;
+  // reaproveita uma aba aberta e carregada do instagram.com (as que o Chrome pôs para
+  // dormir não aceitam scripts); senão abre uma em segundo plano
+  const tabs = await chrome.tabs.query({
+    url: ["https://www.instagram.com/*", "https://*.instagram.com/*"], discarded: false, status: "complete",
+  });
+  if (tabs.length) return (tabs.find((t) => t.active) || tabs[0]).id;
   if (igTab) {
     try { await chrome.tabs.get(igTab); return igTab; } catch (e) { igTab = null; }
   }
@@ -92,10 +95,13 @@ async function igFetch(path, method = "GET") {
     // world MAIN: roda como código da própria página do Instagram (cookies + CSP de 1ª parte)
     const results = await chrome.scripting.executeScript({
       target: { tabId }, world: "MAIN", func: pageFetch, args: [path, method],
+      injectImmediately: true, // não espera o "document_idle", que pode travar no Instagram
     });
     out = results && results[0] && results[0].result;
   } catch (e) {
-    throw new IgError("network", "exec: " + String((e && e.message) || e));
+    const t = await chrome.tabs.get(tabId).catch(() => null);
+    throw new IgError("network", "exec: " + String((e && e.message) || e) +
+      ` [aba ${tabId} ${t ? t.status + " " + t.url : "?"}]`);
   }
   if (!out) throw new IgError("network", "sem retorno da aba");
   if (out.neterr) throw new IgError("network", out.err || "fetch falhou");

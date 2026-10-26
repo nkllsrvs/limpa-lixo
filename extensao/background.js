@@ -1,3 +1,9 @@
+importScripts("dev-reload.js");
+chrome.runtime.onInstalled.addListener(devStart);
+chrome.runtime.onStartup.addListener(devStart);
+chrome.alarms.onAlarm.addListener((a) => { if (a.name === "dev-reload") devCheck(); });
+chrome.tabs.onUpdated.addListener(devOnTab);
+
 // Clicar no ícone abre (ou foca) a página do Limpa Lixo.
 chrome.action.onClicked.addListener(async () => {
   const url = chrome.runtime.getURL("app.html");
