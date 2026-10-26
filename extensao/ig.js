@@ -83,26 +83,30 @@ async function igTabId() {
   return tab.id;
 }
 
-async function igFetch(path, method = "GET") {
+// Executa `func(...args)` dentro de uma aba do instagram.com e devolve o resultado.
+async function inIgTab(func, args) {
   let tabId;
   try {
     tabId = await igTabId();
   } catch (e) {
     throw new IgError("notab", String((e && e.message) || e));
   }
-  let out;
   try {
     // world MAIN: roda como código da própria página do Instagram (cookies + CSP de 1ª parte)
     const results = await chrome.scripting.executeScript({
-      target: { tabId }, world: "MAIN", func: pageFetch, args: [path, method],
+      target: { tabId }, world: "MAIN", func, args,
       injectImmediately: true, // não espera o "document_idle", que pode travar no Instagram
     });
-    out = results && results[0] && results[0].result;
+    return results && results[0] && results[0].result;
   } catch (e) {
     const t = await chrome.tabs.get(tabId).catch(() => null);
     throw new IgError("network", "exec: " + String((e && e.message) || e) +
       ` [aba ${tabId} ${t ? t.status + " " + t.url : "?"}]`);
   }
+}
+
+async function igFetch(path, method = "GET") {
+  const out = await inIgTab(pageFetch, [path, method]);
   if (!out) throw new IgError("network", "sem retorno da aba");
   if (out.neterr) throw new IgError("network", out.err || "fetch falhou");
   const { status, json } = out;
@@ -111,6 +115,7 @@ async function igFetch(path, method = "GET") {
   if (status === 404) throw new IgError("notfound");
   if (json && json.message && String(json.message).toLowerCase().includes("checkpoint")) throw new IgError("checkpoint");
   if (json && json.message === "Please wait a few minutes before you try again.") throw new IgError("rate");
+  if (json && json.message && String(json.message).toLowerCase().includes("not authorized")) throw new IgError("private");
   if (status < 200 || status >= 300) {
     if (!json) throw new IgError("auth", "HTTP " + status + " " + (out.snippet || ""));
     throw new IgError("http", String(status));
@@ -125,12 +130,50 @@ async function whoAmI() {
   return { id: String(id), username: "", pic: "" };
 }
 
+// Injetada na aba do instagram.com: lê a página pública do perfil e tira dela só o
+// id e os totais aproximados (da descrição "686M seguidores, 241 seguindo, ...").
+function pageProfile(username) {
+  return fetch("https://www.instagram.com/" + encodeURIComponent(username) + "/", { credentials: "include" })
+    .then(function (r) {
+      return r.text().then(function (t) {
+        var id = (t.match(/"profile_id":"(\d+)"/) || t.match(/"profilePage_(\d+)"/) || [])[1] || null;
+        var m = t.match(/content="([^"]+?) (?:Followers|seguidores), ([^"]+?) (?:Following|seguindo)/i);
+        return { status: r.status, id: id, followers: m ? m[1] : "", following: m ? m[2] : "" };
+      });
+    })
+    .catch(function (e) { return { status: 0, err: String((e && e.message) || e) }; });
+}
+
+// "686M", "1,2 mil", "12.345", "3.4K", "2 mi" → número aproximado
+function parseCount(s) {
+  const m = String(s || "").trim().toLowerCase().match(/^([\d.,]+)\s*(mil|mi|k|m|b)?/);
+  if (!m) return 0;
+  const mult = { mil: 1e3, k: 1e3, mi: 1e6, m: 1e6, b: 1e9 }[m[2]] || 1;
+  // com multiplicador, "," ou "." é decimal; sem, são separadores de milhar
+  const num = mult > 1 ? parseFloat(m[1].replace(",", ".")) : parseInt(m[1].replace(/[.,]/g, ""), 10);
+  return Math.round((num || 0) * mult);
+}
+
+// Plano B quando web_profile_info está limitado (429) mas o resto da API funciona.
+async function profileFromPage(username) {
+  const out = await inIgTab(pageProfile, [username]);
+  if (!out || out.status === 0) throw new IgError("network", (out && out.err) || "sem retorno da aba");
+  if (out.status === 404 || !out.id) throw new IgError("notfound");
+  return {
+    id: String(out.id), username, full_name: "", pic: "",
+    // a página não diz com segurança se é privado; a própria lista avisa ("private")
+    is_private: false, followed_by_viewer: false,
+    followers: parseCount(out.followers), following: parseCount(out.following),
+  };
+}
+
 async function profileByUsername(username) {
   let j;
   try {
     j = await igFetch(`/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`);
   } catch (e) {
     if (e.kind === "notfound") throw new IgError("notfound");
+    if (e.kind === "rate") return profileFromPage(username);
     throw e;
   }
   const u = j && j.data && j.data.user;

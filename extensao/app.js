@@ -119,6 +119,8 @@ $("cmpForm").addEventListener("submit", async (e) => {
   $("resCard").classList.add("hidden");
   $("bar").classList.add("hidden");
   try {
+    // confere a conta logada agora (a pessoa pode ter trocado de conta no Instagram)
+    state.me = await whoAmI();
     $("cmpMsg").textContent = `Buscando @${target}…`;
     const prof = await profileByUsername(target);
     if (prof.is_private && prof.id !== state.me.id && !prof.followed_by_viewer) {
